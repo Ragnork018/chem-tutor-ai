@@ -1,0 +1,50 @@
+name: Generate Code Files
+
+on:
+  workflow_dispatch:
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Create structure
+        run: |
+          mkdir -p backend/app/{api,llm,retrieval,diagrams}
+          mkdir -p frontend/{app,components}
+          
+      - name: Create files
+        run: |
+          cat > docker-compose.yml << 'EOF'
+version: '3.9'
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+EOF
+
+          cat > backend/requirements.txt << 'EOF'
+fastapi==0.109.0
+uvicorn==0.27.0
+pydantic==2.5.3
+httpx==0.26.0
+psycopg2-binary==2.9.9
+EOF
+
+      - name: Commit changes
+        run: |
+          git config user.name 'Bot'
+          git config user.email 'bot@github.com'
+          git add .
+          git commit -m 'Generated files' || true
+          git push
